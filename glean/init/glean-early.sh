@@ -29,12 +29,14 @@ _GLEAN_PATH=$(dirname "$0")
 
 # NOTE(mnaser): Depending on the cloud, it may have `vfat` config drive which
 #               comes with a capitalized label rather than all lowercase.
-CONFIG_DRIVE_LABEL=""
+CONFIG_DRIVE_LABEL="${GLEAN_CONFIG_DRIVE_LABEL:-}"
 
-if blkid -t LABEL="config-2" ; then
-    CONFIG_DRIVE_LABEL="config-2"
-elif blkid -t LABEL="CONFIG-2" ; then
-    CONFIG_DRIVE_LABEL="CONFIG-2"
+if [ -z "${GLEAN_CONFIG_DRIVE_LABEL}" ]; then
+    if blkid -t LABEL="config-2" ; then
+        CONFIG_DRIVE_LABEL="config-2"
+    elif blkid -t LABEL="CONFIG-2" ; then
+        CONFIG_DRIVE_LABEL="CONFIG-2"
+    fi
 fi
 
 if [ -n "$CONFIG_DRIVE_LABEL" ]; then
@@ -50,5 +52,5 @@ if [ -n "$CONFIG_DRIVE_LABEL" ]; then
         mount -o mode=0700 "${BLOCKDEV}" /mnt/config || true
     fi
     # Note networking is skipped here; udev rules will configure
-    exec $_GLEAN_PATH/python-glean --skip-network --ssh --hostname $@
+    exec "$_GLEAN_PATH/python-glean" --skip-network --ssh --hostname "$@"
 fi
