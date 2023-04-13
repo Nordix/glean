@@ -1,0 +1,16 @@
+[Unit]
+Description=Glean with NetworkManager
+Before=network-pre.target
+Wants=network-pre.target glean-early.service
+After=local-fs.target glean-early.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=%%GLEAN_SCRIPTS_DIR%%/python-glean --use-nm --debug %%EXTRA_ARGS%%
+RemainAfterExit=true
+
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

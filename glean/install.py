@@ -145,13 +145,14 @@ def main():
             log.info("Installing %s NetworkManager support" %
                      "with" if args.use_nm else "without")
             if args.use_nm:
-                service_file = 'glean-nm@.service'
+                service_file = 'glean-nm.service'
             else:
                 service_file = 'glean@.service'
             install(
                 service_file,
-                '/usr/lib/systemd/system/glean@.service',
+                '/usr/lib/systemd/system/glean.service',
                 mode='0644', replacements=replacements)
+            subprocess.call(['systemctl', 'enable', 'glean.service'])
         install(
             'glean-udev.rules',
             '/etc/udev/rules.d/99-glean.rules',
