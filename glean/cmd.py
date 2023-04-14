@@ -117,7 +117,7 @@ def _network_config(args):
         HWADDR={hwaddr}
         ONBOOT=yes
         NM_CONTROLLED=%s
-        TYPE=Ethernet
+        TYPE={devtype}
         """ % ("yes" if args.use_nm else "no"))
 
     return preamble
@@ -129,12 +129,22 @@ def _set_rh_bonding(name, interface, distro, results):
 
     # Careful, we are operating on the live 'results' variable
     # so we need to always append our data
+
+    if 'bond_slaves' in interface:
+        results += "BONDING_MASTER=yes\n"
+        bond_opts = ""
+        if 'bond_mode' in interface:
+            bond_opts += "mode=%s " %  interface['bond_mode']
+        if 'bond_miimon' in interface:
+            bond_opts += "miimon=%s " % interface['bond_miimon']
+        if bond_opts != "":
+            bond_opts = "BONDING_OPTS=%s\n" % bond_opts
+            results += bond_opts
     if _is_suse(distro):
         # SUSE configures the slave interfaces on the master ifcfg file.
         # The master interface contains a 'bond_slaves' key containing a list
         # of the slave interfaces
         if 'bond_slaves' in interface:
-            results += "BONDING_MASTER=yes\n"
             slave_cnt = 0
             for slave in interface['bond_slaves']:
                 results += "BONDING_SLAVE_{id}={name}\n".format(
@@ -223,10 +233,14 @@ def _write_rh_v6_interface(name, interface, args, files):
 def _write_rh_interface(name, interface, args):
     distro = args.distro
     files_to_write = dict()
+    tmp_devtype = 'Ethernet'
+    if 'bond_slaves' in interface:
+        tmp_devtype = 'Bond'
     results = _network_config(args).format(
         bootproto="static",
         name=name,
         hwaddr=interface['mac_address'],
+        devtype=tmp_devtype
     )
 
     results += 'IPADDR=%s\n' % interface['ip_address']
@@ -275,7 +289,10 @@ def _write_rh_dhcp(name, interface, args):
     distro = args.distro
     filename = _network_files(distro)["ifcfg"] + '-{name}'.format(name=name)
     results = _network_config(args).format(
-        bootproto="dhcp", name=name, hwaddr=interface['mac_address'])
+        bootproto="dhcp",
+        name=name,
+        hwaddr=interface['mac_address'],
+        devtype='Ethernet')
     results += _set_rh_vlan(name, interface, distro)
     # set_rh_bonding takes results as argument so we need to assign
     # the return value, not append it
@@ -287,8 +304,15 @@ def _write_rh_dhcp(name, interface, args):
 def _write_rh_manual(name, interface, args):
     distro = args.distro
     filename = _network_files(distro)["ifcfg"] + '-{name}'.format(name=name)
+    tmp_devtype = 'Ethernet'
+    if 'bond_slaves' in interface:
+        tmp_devtype = 'Bond'
     results = _network_config(args).format(
-        bootproto="none", name=name, hwaddr=interface['mac_address'])
+        bootproto="none",
+        name=name,
+        hwaddr=interface['mac_address'],
+        devtype=tmp_devtype
+    )
     results += _set_rh_vlan(name, interface, distro)
     # set_rh_bonding takes results as argument so we need to assign
     # the return value, not append it
