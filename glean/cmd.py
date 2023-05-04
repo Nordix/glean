@@ -178,11 +178,8 @@ def _set_rh_vlan(name, interface, distro):
         results += "VLAN_ID={vlan_id}\n".format(vlan_id=interface['vlan_id'])
         results += "ETHERDEVICE={etherdevice}\n".format(
             etherdevice=name.split('.')[0])
-    else:
-        results += "VLAN=yes\n"
 
     return results
-
 
 def _write_rh_v6_interface(name, interface, args, files):
     config_file = _network_files(args.distro)["ifcfg"] + '-%s' % name
@@ -236,6 +233,8 @@ def _write_rh_interface(name, interface, args):
     tmp_devtype = 'Ethernet'
     if 'bond_slaves' in interface:
         tmp_devtype = 'Bond'
+    if 'vlan_id' in interface:
+        tmp_devtype = 'Vlan'
     results = _network_config(args).format(
         bootproto="static",
         name=name,
@@ -1290,6 +1289,7 @@ def is_interface_vlan(iface, distro):
     elif distro in ('redhat', 'centos', 'fedora', 'rocky'):
         file_name = '/etc/sysconfig/network-scripts/ifcfg-%s' % iface
         if os.path.exists(file_name):
+            log.debug("IT IS VLAN")
             return 'VLAN=YES' in open(file_name).read()
     elif _is_suse(distro):
         file_name = '/etc/sysconfig/network/ifcfg-%s' % iface
