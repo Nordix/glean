@@ -137,8 +137,12 @@ def _set_rh_bonding(name, interface, distro, results):
             bond_opts += "mode=%s " %  interface['bond_mode']
         if 'bond_miimon' in interface:
             bond_opts += "miimon=%s " % interface['bond_miimon']
+        if 'bond_xmit_hash_policy' in interface:
+            bond_opts += "xmit_hash_policy=%s " % interface['bond_xmit_hash_policy']
+        if 'bond_lacp_rate' in interface:
+            bond_opts += "lacp_rate=%s " % interface['bond_lacp_rate']
         if bond_opts != "":
-            bond_opts = "BONDING_OPTS=%s\n" % bond_opts
+            bond_opts = "BONDING_OPTS=\"%s\"\n" % bond_opts
             results += bond_opts
     if _is_suse(distro):
         # SUSE configures the slave interfaces on the master ifcfg file.
