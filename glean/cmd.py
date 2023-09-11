@@ -105,9 +105,9 @@ def _network_config(args):
     if _is_suse(distro):
         preamble = textwrap.dedent("""\
         # Automatically generated, do not edit
-        BOOTPROTO={bootproto}
-        LLADDR={hwaddr}
-        STARTMODE=auto
+        BOOTPROTO='{bootproto}'
+        LLADDR='{hwaddr}'
+        STARTMODE='auto'
         """)
     else:
         preamble = textwrap.dedent("""\
@@ -131,34 +131,51 @@ def _set_rh_bonding(name, interface, distro, results):
     # so we need to always append our data
 
     if 'bond_slaves' in interface:
-        results += "BONDING_MASTER=yes\n"
-        bond_opts = ""
-        if 'bond_mode' in interface:
-            bond_opts += "mode=%s " %  interface['bond_mode']
-        if 'bond_miimon' in interface:
-            bond_opts += "miimon=%s " % interface['bond_miimon']
-        if 'bond_xmit_hash_policy' in interface:
-            bond_opts += "xmit_hash_policy=%s " % interface['bond_xmit_hash_policy']
-        if 'bond_lacp_rate' in interface:
-            bond_opts += "lacp_rate=%s " % interface['bond_lacp_rate']
-        if bond_opts != "":
-            bond_opts = "BONDING_OPTS=\"%s\"\n" % bond_opts
-            results += bond_opts
+        if _is_suse(distro):
+            results += "BONDING_MASTER='yes'\n"
+            bond_opts = ""
+            if 'bond_mode' in interface:
+                bond_opts += "mode=%s " %  interface['bond_mode']
+            if 'bond_miimon' in interface:
+                bond_opts += "miimon=%s " % interface['bond_miimon']
+            if 'bond_xmit_hash_policy' in interface:
+                bond_opts += "xmit_hash_policy=%s " % interface['bond_xmit_hash_policy']
+            if 'bond_lacp_rate' in interface:
+                bond_opts += "lacp_rate=%s" % interface['bond_lacp_rate']
+            if bond_opts != "":
+                bond_opts = "BONDING_MODULE_OPTS=\'%s\'\n" % bond_opts
+                results += bond_opts
+        else:
+            results += "BONDING_MASTER=yes\n"
+            bond_opts = ""
+            if 'bond_mode' in interface:
+                bond_opts += "mode=%s " %  interface['bond_mode']
+            if 'bond_miimon' in interface:
+                bond_opts += "miimon=%s " % interface['bond_miimon']
+            if 'bond_xmit_hash_policy' in interface:
+                bond_opts += "xmit_hash_policy=%s " % interface['bond_xmit_hash_policy']
+            if 'bond_lacp_rate' in interface:
+                bond_opts += "lacp_rate=%s " % interface['bond_lacp_rate']
+            if bond_opts != "":
+                bond_opts = "BONDING_OPTS=\"%s\"\n" % bond_opts
+                results += bond_opts
+
     if _is_suse(distro):
         # SUSE configures the slave interfaces on the master ifcfg file.
         # The master interface contains a 'bond_slaves' key containing a list
         # of the slave interfaces
         if 'bond_slaves' in interface:
+            results = results.replace("='auto'", "='onboot'")
             slave_cnt = 0
             for slave in interface['bond_slaves']:
-                results += "BONDING_SLAVE_{id}={name}\n".format(
+                results += "BONDING_SLAVE_{id}='{name}'\n".format(
                     id=slave_cnt, name=slave)
                 slave_cnt += 1
         else:
             # Slave interfaces do not know they are part of a bonded
             # interface. All we need to do is to set the STARTMODE
             # to hotplug
-            results = results.replace("=auto", "=hotplug")
+            results = results.replace("='auto'", "='hotplug'")
 
     else:
         # RedHat does not add any specific configuration to the master
@@ -179,8 +196,8 @@ def _set_rh_vlan(name, interface, distro):
         return results
 
     if _is_suse(distro):
-        results += "VLAN_ID={vlan_id}\n".format(vlan_id=interface['vlan_id'])
-        results += "ETHERDEVICE={etherdevice}\n".format(
+        results += "VLAN_ID='{vlan_id}'\n".format(vlan_id=interface['vlan_id'])
+        results += "ETHERDEVICE='{etherdevice}'\n".format(
             etherdevice=name.split('.')[0])
 
     return results
@@ -236,18 +253,28 @@ def _write_rh_interface(name, interface, args):
     files_to_write = dict()
     tmp_devtype = 'Ethernet'
     if 'bond_slaves' in interface:
-        tmp_devtype = 'Bond'
+        results = ''
+        if _is_suse(distro):
+            results += "IPADDR='%s/27'\n" % interface['ip_address']
+        else:
+            tmp_devtype = 'Bond'
     if 'vlan_id' in interface:
         tmp_devtype = 'Vlan'
-    results = _network_config(args).format(
-        bootproto="static",
-        name=name,
-        hwaddr=interface['mac_address'],
-        devtype=tmp_devtype
-    )
-
-    results += 'IPADDR=%s\n' % interface['ip_address']
-    results += 'NETMASK=%s\n' % interface['netmask']
+    if _is_suse(distro):
+        results += _network_config(args).format(
+            bootproto="static",
+            hwaddr=interface['mac_address']
+        )
+        results += "IPADDR='%s/27'\n" % interface['ip_address']
+    else:
+        results += _network_config(args).format(
+            bootproto="static",
+            name=name,
+            hwaddr=interface['mac_address'],
+            devtype=tmp_devtype
+        )
+        results += "IPADDR=%s\n" % interface['ip_address']
+        results += "NETMASK=%s\n" % interface['netmask']
 
     results += _set_rh_vlan(name, interface, distro)
     # set_rh_bonding takes results as argument so we need to assign
