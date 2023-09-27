@@ -83,18 +83,18 @@ def _is_suse(distro):
 
 def _network_files(distro):
     network_files = {}
-    if _is_suse(distro):
-        network_files = {
-            "ifcfg": "/etc/sysconfig/network/ifcfg",
-            "route": "/etc/sysconfig/network/ifroute",
-            "route6": "/etc/sysconfig/network/ifroute6",
-        }
-    else:
-        network_files = {
-            "ifcfg": "/etc/sysconfig/network-scripts/ifcfg",
-            "route": "/etc/sysconfig/network-scripts/route",
-            "route6": "/etc/sysconfig/network-scripts/route6",
-        }
+    # if _is_suse(distro):
+    #     network_files = {
+    #         "ifcfg": "/etc/sysconfig/network/ifcfg",
+    #         "route": "/etc/sysconfig/network/ifroute",
+    #         "route6": "/etc/sysconfig/network/ifroute6",
+    #     }
+    # else:
+    network_files = {
+        "ifcfg": "/etc/sysconfig/network-scripts/ifcfg",
+        "route": "/etc/sysconfig/network-scripts/route",
+        "route6": "/etc/sysconfig/network-scripts/route6",
+    }
 
     return network_files
 
@@ -102,23 +102,23 @@ def _network_files(distro):
 def _network_config(args):
     distro = args.distro
 
-    if _is_suse(distro):
-        preamble = textwrap.dedent("""\
-        # Automatically generated, do not edit
-        BOOTPROTO={bootproto}
-        LLADDR={hwaddr}
-        STARTMODE=auto
-        """)
-    else:
-        preamble = textwrap.dedent("""\
-        # Automatically generated, do not edit
-        DEVICE={name}
-        BOOTPROTO={bootproto}
-        HWADDR={hwaddr}
-        ONBOOT=yes
-        NM_CONTROLLED=%s
-        TYPE={devtype}
-        """ % ("yes" if args.use_nm else "no"))
+    # if _is_suse(distro):
+    #     preamble = textwrap.dedent("""\
+    #     # Automatically generated, do not edit
+    #     BOOTPROTO={bootproto}
+    #     LLADDR={hwaddr}
+    #     STARTMODE=auto
+    #     """)
+    # else:
+    preamble = textwrap.dedent("""\
+    # Automatically generated, do not edit
+    DEVICE={name}
+    BOOTPROTO={bootproto}
+    HWADDR={hwaddr}
+    ONBOOT=yes
+    NM_CONTROLLED=%s
+    TYPE={devtype}
+    """ % ("yes" if args.use_nm else "no"))
 
     return preamble
 
@@ -144,30 +144,30 @@ def _set_rh_bonding(name, interface, distro, results):
         if bond_opts != "":
             bond_opts = "BONDING_OPTS=\"%s\"\n" % bond_opts
             results += bond_opts
-    if _is_suse(distro):
-        # SUSE configures the slave interfaces on the master ifcfg file.
-        # The master interface contains a 'bond_slaves' key containing a list
-        # of the slave interfaces
-        if 'bond_slaves' in interface:
-            slave_cnt = 0
-            for slave in interface['bond_slaves']:
-                results += "BONDING_SLAVE_{id}={name}\n".format(
-                    id=slave_cnt, name=slave)
-                slave_cnt += 1
-        else:
-            # Slave interfaces do not know they are part of a bonded
-            # interface. All we need to do is to set the STARTMODE
-            # to hotplug
-            results = results.replace("=auto", "=hotplug")
+    # if _is_suse(distro):
+    #     # SUSE configures the slave interfaces on the master ifcfg file.
+    #     # The master interface contains a 'bond_slaves' key containing a list
+    #     # of the slave interfaces
+    #     if 'bond_slaves' in interface:
+    #         slave_cnt = 0
+    #         for slave in interface['bond_slaves']:
+    #             results += "BONDING_SLAVE_{id}={name}\n".format(
+    #                 id=slave_cnt, name=slave)
+    #             slave_cnt += 1
+    #     else:
+    #         # Slave interfaces do not know they are part of a bonded
+    #         # interface. All we need to do is to set the STARTMODE
+    #         # to hotplug
+    #         results = results.replace("=auto", "=hotplug")
 
-    else:
+    # else:
         # RedHat does not add any specific configuration to the master
         # interface. All configuration is done in the slave ifcfg files.
-        if 'bond_slaves' in interface:
-            return results
+    if 'bond_slaves' in interface:
+        return results
 
-        results += "SLAVE=yes\n"
-        results += "MASTER={0}\n".format(interface['bond_master'])
+    results += "SLAVE=yes\n"
+    results += "MASTER={0}\n".format(interface['bond_master'])
 
     return results
 
@@ -178,10 +178,10 @@ def _set_rh_vlan(name, interface, distro):
     if 'vlan_id' not in interface:
         return results
 
-    if _is_suse(distro):
-        results += "VLAN_ID={vlan_id}\n".format(vlan_id=interface['vlan_id'])
-        results += "ETHERDEVICE={etherdevice}\n".format(
-            etherdevice=name.split('.')[0])
+    # if _is_suse(distro):
+    #     results += "VLAN_ID={vlan_id}\n".format(vlan_id=interface['vlan_id'])
+    #     results += "ETHERDEVICE={etherdevice}\n".format(
+    #         etherdevice=name.split('.')[0])
 
     return results
 
@@ -256,13 +256,13 @@ def _write_rh_interface(name, interface, args):
     routes = []
     for route in interface.get('routes', ()):
         if route['network'] == '0.0.0.0' and route['netmask'] == '0.0.0.0':
-            if not _is_suse(distro):
-                results += "DEFROUTE=yes\n"
-                results += "GATEWAY={gw}\n".format(gw=route['gateway'])
-            else:
-                # Special notation for default route on SUSE/wicked
-                routes.append(dict(
-                    net='default', mask='', gw=route['gateway']))
+            # if not _is_suse(distro):
+            results += "DEFROUTE=yes\n"
+            results += "GATEWAY={gw}\n".format(gw=route['gateway'])
+            # else:
+            #     # Special notation for default route on SUSE/wicked
+            #     routes.append(dict(
+            #         net='default', mask='', gw=route['gateway']))
         else:
             routes.append(dict(
                 net=route['network'], mask=route['netmask'],
@@ -271,15 +271,15 @@ def _write_rh_interface(name, interface, args):
     if routes:
         route_content = ""
         for x in range(0, len(routes)):
-            if not _is_suse(distro):
-                route_content += "ADDRESS{x}={net}\n".format(x=x, **routes[x])
-                route_content += "NETMASK{x}={mask}\n".format(x=x, **routes[x])
-                route_content += "GATEWAY{x}={gw}\n".format(x=x, **routes[x])
-            else:
-                # Avoid the extra trailing whitespace for the default route
-                # because mask is empty in that case.
-                route_content += "{net} {gw} {mask}\n".format(
-                    **routes[x]).replace(' \n', '\n')
+            # if not _is_suse(distro):
+            route_content += "ADDRESS{x}={net}\n".format(x=x, **routes[x])
+            route_content += "NETMASK{x}={mask}\n".format(x=x, **routes[x])
+            route_content += "GATEWAY{x}={gw}\n".format(x=x, **routes[x])
+            # else:
+            #     # Avoid the extra trailing whitespace for the default route
+            #     # because mask is empty in that case.
+            #     route_content += "{net} {gw} {mask}\n".format(
+            #         **routes[x]).replace(' \n', '\n')
         files_to_write[_network_files(distro)["route"] + '-{name}'
                        .format(name=name)] = route_content
     files_to_write[_network_files(distro)["ifcfg"] + '-{name}'.format(
@@ -1296,7 +1296,7 @@ def is_interface_vlan(iface, distro):
             log.debug("IT IS VLAN")
             return 'VLAN=YES' in open(file_name).read()
     elif _is_suse(distro):
-        file_name = '/etc/sysconfig/network/ifcfg-%s' % iface
+        file_name = '/etc/sysconfig/network-scripts/ifcfg-%s' % iface
         if os.path.exists(file_name):
             return 'ETHERDEVICE' in open(file_name).read()
     elif distro in ('gentoo'):
@@ -1317,7 +1317,7 @@ def is_interface_bridge(iface, distro):
         if os.path.exists(file_name):
             return 'type=bridge' in open(file_name).read().lower()
     elif _is_suse(distro):
-        file_name = '/etc/sysconfig/network/ifcfg-%s' % iface
+        file_name = '/etc/sysconfig/network-scripts/ifcfg-%s' % iface
         if os.path.exists(file_name):
             return 'bridge=yes' in open(file_name).read().lower()
     elif distro in ('gentoo'):
